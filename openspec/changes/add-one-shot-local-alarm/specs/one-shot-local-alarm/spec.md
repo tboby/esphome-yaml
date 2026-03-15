@@ -18,6 +18,21 @@ The device SHALL expose a single one-shot alarm that is controlled from Home Ass
 - **WHEN** the device boots with a persisted scheduled datetime that is still in the future once valid time is available
 - **THEN** the device SHALL restore the alarm state to `armed`
 
+### Requirement: Device accepts valid local time from Home Assistant or NTP
+The device SHALL consider current local time valid when it has been established by either the Home Assistant time source or the NTP time source.
+
+#### Scenario: Home Assistant time is valid
+- **WHEN** the Home Assistant time source has established valid local time
+- **THEN** the device SHALL allow the alarm scheduler to use that local time
+
+#### Scenario: NTP time is valid while Home Assistant is unavailable
+- **WHEN** the Home Assistant time source is unavailable and the NTP time source has established valid local time
+- **THEN** the device SHALL allow the alarm scheduler to use that local time
+
+#### Scenario: No time source is valid
+- **WHEN** neither the Home Assistant time source nor the NTP time source has established valid local time
+- **THEN** the device SHALL NOT trigger the alarm
+
 ### Requirement: Device ignores invalid scheduled datetimes
 The device SHALL ignore any scheduled datetime that resolves to a time in the past.
 
@@ -27,7 +42,7 @@ The device SHALL ignore any scheduled datetime that resolves to a time in the pa
 - **AND** the device SHALL NOT enter the `armed` state for that request
 
 ### Requirement: Device triggers the one-shot alarm locally at the scheduled minute
-The device SHALL compare the persisted scheduled datetime against the device's current local time and SHALL trigger local alarm playback when the scheduled minute is reached. When the alarm triggers, it SHALL become a one-shot runtime event and SHALL no longer remain scheduled.
+The device SHALL compare the persisted scheduled datetime against the device's current valid local time and SHALL trigger local alarm playback when the scheduled minute is reached. When the alarm triggers, it SHALL become a one-shot runtime event and SHALL no longer remain scheduled.
 
 #### Scenario: Scheduled minute is reached
 - **WHEN** the device has a persisted scheduled datetime and its current valid local time reaches that same minute
@@ -37,6 +52,12 @@ The device SHALL compare the persisted scheduled datetime against the device's c
 
 #### Scenario: Alarm becomes known to be missed
 - **WHEN** the device has an `armed` alarm and later determines from valid local time that the scheduled datetime is already in the past
+- **THEN** the device SHALL clear the persisted scheduled datetime
+- **AND** the device SHALL set the alarm state to `idle`
+- **AND** the device SHALL NOT start alarm playback
+
+#### Scenario: Time jumps past the scheduled minute
+- **WHEN** the device has an `armed` alarm and a newly valid local time from Home Assistant or NTP is already later than the scheduled datetime
 - **THEN** the device SHALL clear the persisted scheduled datetime
 - **AND** the device SHALL set the alarm state to `idle`
 - **AND** the device SHALL NOT start alarm playback

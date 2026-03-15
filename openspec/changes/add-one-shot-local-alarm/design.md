@@ -1,6 +1,6 @@
 ## Context
 
-The AtomS3R + Echo Base voice assistant needs a simpler alarm model than a recurring daily alarm tied to fixed hour and minute fields. The new capability is a one-shot alarm scheduled from Home Assistant, persisted locally on the device, and executed locally using the device speaker and controls. The device currently receives its notion of current time from Home Assistant, and that source is acceptable for v1 even though alarms may be missed during time-unavailable periods such as reboots or network recovery.
+The AtomS3R + Echo Base voice assistant needs a simpler alarm model than a recurring daily alarm tied to fixed hour and minute fields. The new capability is a one-shot alarm scheduled from Home Assistant, persisted locally on the device, and executed locally using the device speaker and controls. The device currently receives its notion of current time from Home Assistant, and this change adds a simple NTP fallback so alarms are not fully blocked on Home Assistant availability.
 
 This change crosses several concerns in the device configuration: persisted alarm state, time comparison, Home Assistant exposure, local audio playback, wake-word handling, and button behavior while ringing. The design must keep the user-facing model minimal while ensuring the device behaves predictably when alarms are replaced, dismissed, or missed.
 
@@ -9,6 +9,7 @@ This change crosses several concerns in the device configuration: persisted alar
 **Goals:**
 - Represent the alarm as a single one-shot scheduled timestamp with a simple runtime state model of `idle`, `armed`, or `ringing`.
 - Let Home Assistant schedule, replace, and clear the one-shot alarm using an absolute datetime value that the device rounds down to minute precision.
+- Let the device treat either Home Assistant time or NTP time as sufficient current local time using simple validity-based logic rather than complex source reconciliation.
 - Persist the scheduled timestamp across reboot so the device can resume an upcoming alarm after reconnecting and time synchronization.
 - Trigger alarm playback locally when the device's current local time reaches the scheduled minute.
 - Allow local dismissal during ringing via the hardware button or any wake trigger, without starting normal voice assistant interaction.
@@ -19,6 +20,7 @@ This change crosses several concerns in the device configuration: persisted alar
 - Replay of alarms that were missed because valid time was unavailable or returned after the scheduled minute had passed.
 - A full v1 display experience, beyond reserving documented state hooks for later UI work.
 - Special handling for DST gaps such as the skipped hour during summer time transition.
+- Complex time-source arbitration, drift reconciliation, or RTC-backed failover.
 
 ## Decisions
 
@@ -31,14 +33,15 @@ Alternatives considered:
 - Separate `enabled` flag and datetime fields: rejected because it creates invalid combinations such as enabled-without-target and complicates one-shot semantics.
 - Daily hour/minute alarm fields: rejected because the user wants explicit one-shot scheduling that clears after firing.
 
-### Treat Home Assistant time as the alarm clock source for v1
-The device will compare the persisted target against the local time currently provided to the device by Home Assistant. The alarm subsystem will not add independent UTC conversion logic, RTC requirements, or missed-alarm backfill.
+### Use simple valid-time logic across Home Assistant time and NTP
+The device will compare the persisted target against the current local time from whichever configured time source is presently valid. Home Assistant time remains the primary integration path, and SNTP provides a simple fallback. The alarm subsystem will not add independent UTC conversion logic, RTC requirements, source reconciliation, or missed-alarm backfill.
 
-This keeps the implementation aligned with the current time source and the accepted failure model: if time is not available or skips past the target, the alarm may be missed. That trade-off is acceptable because the priority is surviving main server downtime at trigger time, not complete network or power isolation.
+This keeps the implementation aligned with the accepted failure model: if either Home Assistant or NTP has established valid local time, the alarm can operate; if neither has, the alarm may be missed. That trade-off is acceptable because the priority is surviving main server downtime at trigger time with simple, dumb logic rather than building a highly coordinated time subsystem.
 
 Alternatives considered:
-- Add RTC-backed or SNTP-backed redundancy: deferred because it adds more system complexity than the current scope requires.
-- Model everything in UTC and translate locally: rejected because the device can rely on the time semantics already delivered by Home Assistant.
+- Home Assistant time only: rejected because it leaves time recovery unnecessarily dependent on the main server.
+- Add RTC-backed redundancy: deferred because it adds more system complexity than the current scope requires.
+- Model everything in UTC and translate locally: rejected because the device can rely on local time semantics already delivered by its configured time sources.
 
 ### Round down to minute precision and ignore past timestamps
 Incoming scheduled datetimes will be rounded down to the nearest minute. If the resulting target is already in the past relative to the current device time at the moment of setting, the device will ignore it.
@@ -67,7 +70,7 @@ Alternatives considered:
 - Let wake-trigger dismissal flow into a normal assistant interaction: rejected because it combines two separate intents and makes ringing behavior less predictable.
 
 ### Auto-stop after five minutes and clear missed alarms when they become known to be past
-The device will stop ringing after five minutes if the user does not dismiss it. If the device later regains valid time and can determine that an armed alarm target is already in the past, it will clear that alarm without ringing.
+The device will stop ringing after five minutes if the user does not dismiss it. If the device later regains valid time from Home Assistant or NTP and can determine that an armed alarm target is already in the past, it will clear that alarm without ringing.
 
 This prevents infinite ringing and avoids keeping stale armed alarms around after reboot or network recovery. Because the design intentionally has no grace-period replay, any missed target is simply discarded once the device can detect that it has passed.
 
@@ -77,7 +80,8 @@ Alternatives considered:
 
 ## Risks / Trade-offs
 
-- [Alarm can be missed during time loss, reboot, or DST gap] -> Accept this behavior in v1 and document that the device only triggers when its current local time reaches the scheduled minute.
+- [Alarm can be missed during time loss, reboot, NTP/HA recovery, or DST gap] -> Accept this behavior in v1 and document that the device only triggers when its current local time reaches the scheduled minute.
+- [Home Assistant time and NTP time may not become valid at the same moment or may jump slightly differently] -> Use simple validity-based logic and accept the currently valid local time without trying to reconcile sources.
 - [Home Assistant entity support may not map cleanly to nullable datetime plus enum state] -> Prefer that model conceptually, but allow an implementation-layer adapter if ESPHome entity constraints require a different wire representation.
 - [Wake-trigger dismissal may occasionally fire from non-target speech or ambient audio] -> Limit wake-trigger handling to the `ringing` state and treat it strictly as dismissal, never as assistant activation.
 - [Replacing an alarm while ringing changes active runtime behavior] -> Define replacement explicitly as stop-current-ringing-and-arm-new-target so the behavior is deterministic.
