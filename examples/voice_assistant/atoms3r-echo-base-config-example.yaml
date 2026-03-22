@@ -30,7 +30,5 @@ wifi:
 
 captive_portal:
 
-
 packages:
   - !include ../../common/atoms3r-with-echo-base.yaml
-    

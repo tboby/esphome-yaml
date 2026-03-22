@@ -1,7 +1,7 @@
 ---
 substitutions:
-  name: atoms3r-with-echo-base
-  friendly_name: AtomS3R Echo Base Voice Assistant
+  name: atoms3-with-echo-base
+  friendly_name: AtomS3 Echo Base Voice Assistant
 
   # Casita images
   loading_illustration_file: https://github.com/esphome/wake-word-voice-assistants/raw/main/casita/loading_320_240.png
@@ -20,9 +20,8 @@ substitutions:
   wake_word_trigger_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/wake_word_triggered.flac
   timer_finished_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
   error_cloud_expired_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/error_cloud_expired.mp3
-
-  # Micro wake word models
   stop_model_file: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
+
   # Background colors
   loading_illustration_background_color: '000000'
   idle_illustration_background_color: '000000'
@@ -212,21 +211,11 @@ media_player:
 
     on_announcement:
       - logger.log: "Announcing!"
-      # Stop the wake word (mWW or VA) if the mic is capturing
-      - if:
-          condition:
-            - microphone.is_capturing:
-          then:
-            - script.execute: stop_wake_word
-            # Ensure VA stops before moving on
-            - if:
-                condition:
-                  - lambda: |-
-                      return id(wake_word_engine_location).current_option() == "In Home Assistant";
-                then:
-                  - wait_until:
-                      - not:
-                          voice_assistant.is_running:
+      - script.execute: stop_wake_word
+      # Ensure VA stops before moving on
+      - wait_until:
+          - not:
+              voice_assistant.is_running:
       # Since VA isn't running, this is user-initiated media playback. Draw the mute display
       - if:
           condition:
@@ -308,122 +297,24 @@ switch:
       - switch.turn_off: timer_ringing
 
 
-select:
-  - platform: template
-    entity_category: config
-    name: Wake word engine location
-    id: wake_word_engine_location
-    icon: "mdi:account-voice"
-    optimistic: true
-    restore_value: true
-    options:
-      - In Home Assistant
-      - On device
-    initial_option: In Home Assistant
-    on_value:
-      - if:
-          condition:
-            lambda: return !id(init_in_progress);
-          then:
-            - wait_until:
-                lambda: return id(voice_assistant_phase) == ${voice_assist_muted_phase_id} || id(voice_assistant_phase) == ${voice_assist_idle_phase_id};
-            - if:
-                condition:
-                  lambda: return x == "In Home Assistant";
-                then:
-                  - micro_wake_word.stop
-                  - delay: 500ms
-                  - if:
-                      condition:
-                        switch.is_off: mute
-                      then:
-                        - lambda: id(va).set_use_wake_word(true);
-                        - voice_assistant.start_continuous:
-            - if:
-                condition:
-                  lambda: return x == "On device";
-                then:
-                  - lambda: id(va).set_use_wake_word(false);
-                  - voice_assistant.stop
-                  - delay: 500ms
-                  - if:
-                      condition:
-                        switch.is_off: mute
-                      then:
-                        - micro_wake_word.start
-
-
-  - platform: template
-    name: "Wake word sensitivity"
-    optimistic: true
-    initial_option: Slightly sensitive
-    restore_value: true
-    entity_category: config
-    options:
-      - Slightly sensitive
-      - Moderately sensitive
-      - Very sensitive
-    on_value:
-      # Sets specific wake word probabilities computed for each particular model
-      # Note probability cutoffs are set as a quantized uint8 value, each comment has the corresponding floating point cutoff
-      # False Accepts per Hour values are tested against all units and channels from the Dinner Party Corpus.
-      # These cutoffs apply only to the specific models included in the firmware: okay_nabu@20241226.3, hey_jarvis@v2, hey_mycroft@v2
-      lambda: |-
-        if (x == "Slightly sensitive") {
-          id(okay_nabu).set_probability_cutoff(217);    // 0.85 -> 0.000 FAPH on DipCo (Manifest's default)
-          id(hey_jarvis).set_probability_cutoff(247);   // 0.97 -> 0.563 FAPH on DipCo (Manifest's default)
-          id(hey_mycroft).set_probability_cutoff(253);  // 0.99 -> 0.567 FAPH on DipCo
-        } else if (x == "Moderately sensitive") {
-          id(okay_nabu).set_probability_cutoff(176);    // 0.69 -> 0.376 FAPH on DipCo
-          id(hey_jarvis).set_probability_cutoff(235);   // 0.92 -> 0.939 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(242);  // 0.95 -> 1.502 FAPH on DipCo (Manifest's default)
-        } else if (x == "Very sensitive") {
-          id(okay_nabu).set_probability_cutoff(143);    // 0.56 -> 0.751 FAPH on DipCo
-          id(hey_jarvis).set_probability_cutoff(212);   // 0.83 -> 1.502 FAPH on DipCo
-          id(hey_mycroft).set_probability_cutoff(237);  // 0.93 -> 1.878 FAPH on DipCo
-        }
-
 micro_wake_word:
   id: mww
   microphone: i2s_mic
+  stop_after_detection: false
   models:
-    - model: okay_nabu
-      id: okay_nabu
-    - model: hey_jarvis
-      id: hey_jarvis
-    - model: hey_mycroft
-      id: hey_mycroft
     - model: ${stop_model_file}
       id: stop
       internal: true
-  vad:
   on_wake_word_detected:
-    - script.execute:
-        id: play_sound
-        priority: true
-        sound_file: !lambda return id(wake_word_triggered_sound);
-
-    - wait_until:
-        condition:
-          - media_player.is_announcing:
-        timeout: 0.5s
-    # Announcement is finished and the I2S bus is free
-    - wait_until:
-        - and:
-            - not:
-                media_player.is_announcing:
-            - not:
-                speaker.is_playing:
-
-    - voice_assistant.start:
-        wake_word: !lambda return wake_word;
+    - switch.turn_off: timer_ringing
+    - media_player.stop:
+        announcement: true
 
 
 voice_assistant:
   id: va
   microphone: i2s_mic
   media_player: echo_base_player
-  micro_wake_word: mww
   noise_suppression_level: 2
   auto_gain: 31dBFS
   volume_multiplier: 2.0
@@ -449,14 +340,6 @@ voice_assistant:
                 media_player.is_announcing:
             - not:
                 speaker.is_playing:
-    # Restart only mWW if enabled; streaming wake words automatically restart
-    - if:
-        condition:
-          - lambda: |-
-              return id(wake_word_engine_location).current_option() == "On device";
-        then:
-          - lambda: id(va).set_use_wake_word(false);
-          - micro_wake_word.start:
     - script.execute: set_idle_or_mute_phase
     - script.execute: draw_display
 
@@ -583,45 +466,30 @@ display:
           it.printf(0, 0, id(mdi_icon_128), Color::WHITE, "%s", "\U000F036D");
 
 script:
-  # Starts either mWW or the streaming wake word, depending on the configured location
+  # Starts the Home Assistant streaming wake word
   - id: start_wake_word
     then:
+      - micro_wake_word.stop:
       - if:
           condition:
-            and:
-              - not:
-                  - voice_assistant.is_running:
-              - lambda: |-
-                  return id(wake_word_engine_location).current_option() == "On device";
-          then:
-            - lambda: id(va).set_use_wake_word(false);
-            - micro_wake_word.start:
-      - if:
-          condition:
-            and:
-              - not:
-                  - voice_assistant.is_running:
-              - lambda: |-
-                  return id(wake_word_engine_location).current_option() == "In Home Assistant";
+            not:
+              - voice_assistant.is_running
           then:
             - lambda: id(va).set_use_wake_word(true);
             - voice_assistant.start_continuous:
-  # Stops either mWW or the streaming wake word, depending on the configured location
+  # Stops the Home Assistant streaming wake word and enables local stop detection
   - id: stop_wake_word
     then:
+      - lambda: id(va).set_use_wake_word(false);
+      - voice_assistant.stop:
       - if:
           condition:
-            lambda: |-
-              return id(wake_word_engine_location).current_option() == "In Home Assistant";
+            or:
+              - media_player.is_announcing
+              - speaker.is_playing
+              - switch.is_on: timer_ringing
           then:
-            - lambda: id(va).set_use_wake_word(false);
-            - voice_assistant.stop:
-      - if:
-          condition:
-            lambda: |-
-              return id(wake_word_engine_location).current_option() == "On device";
-          then:
-            - micro_wake_word.stop:
+            - micro_wake_word.start:
   # Set the voice assistant phase to idle or muted, depending on if the software mute switch is activated
   - id: set_idle_or_mute_phase
     then:
