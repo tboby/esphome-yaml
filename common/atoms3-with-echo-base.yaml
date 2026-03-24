@@ -19,7 +19,7 @@ substitutions:
   # Audio files
   wake_word_trigger_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/wake_word_triggered.flac
   timer_finished_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
-  error_cloud_expired_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/error_cloud_expired.mp3
+  # error_cloud_expired_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/error_cloud_expired.mp3
 
   # Micro wake word models
   stop_model_file: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
@@ -190,7 +190,7 @@ media_player:
   - platform: speaker
     name: "Echo Base Player"
     id: echo_base_player
-    codec_support_enabled: true
+    codec_support_enabled: false
     volume_min: 0.5
     volume_max: 0.8
     announcement_pipeline:
@@ -203,8 +203,8 @@ media_player:
         file: ${wake_word_trigger_sound_file}
       - id: timer_finished_sound
         file: ${timer_finished_sound_file}
-      - id: error_cloud_expired
-        file: ${error_cloud_expired_file}
+      # - id: error_cloud_expired
+        # file: ${error_cloud_expired_file}
     on_state:
       - logger.log: "State updated!"
     on_play:
@@ -481,15 +481,15 @@ voice_assistant:
               else:
                 - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
         # If the error code is cloud-auth-failed, serve a local audio file guiding the user.
-    - if:
-        condition:
-          - lambda: return code == "cloud-auth-failed";
-        then:
-          - script.execute:
-              id: play_sound
-              priority: true
-              sound_file: !lambda return id(error_cloud_expired);
-          - script.execute: draw_display
+    # - if:
+    #     condition:
+    #       - lambda: return code == "cloud-auth-failed";
+    #     then:
+    #       - script.execute:
+    #           id: play_sound
+    #           priority: true
+    #           sound_file: !lambda return id(error_cloud_expired);
+    #       - script.execute: draw_display
 
   on_client_connected:
     - lambda: id(init_in_progress) = false;
