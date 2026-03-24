@@ -1,0 +1,16 @@
+[tools]
+uv = "latest"
+
+[tasks.setup]
+description = "Create .venv with Python 3.12 and install ESPHome pinned to this repo"
+run = [
+  "rm -rf .venv",
+  "python3.12 -m venv .venv",
+  ".venv/bin/python -m pip install --upgrade pip",
+  "uv pip install --python .venv/bin/python esphome==2026.1.2"
+]
+
+[tasks.check]
+description = "Verify ESPHome is installed and callable"
+depends = ["setup"]
+run = ".venv/bin/esphome version"
