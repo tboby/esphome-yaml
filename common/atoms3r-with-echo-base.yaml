@@ -89,7 +89,7 @@ api:
   actions:
     - action: set_alarm
       variables:
-        epoch: int64
+        epoch: string
       then:
         - script.execute:
             id: set_alarm_from_epoch
@@ -763,11 +763,18 @@ script:
 
   - id: set_alarm_from_epoch
     parameters:
-      epoch: int64_t
+      epoch: string
     then:
       - lambda: |-
-          id(alarm_epoch) = epoch;
-          id(alarm_enabled) = epoch > 0;
+          char *endptr = nullptr;
+          const long long parsed_epoch = strtoll(epoch.c_str(), &endptr, 10);
+          const bool has_parse_error = endptr == epoch.c_str() || *endptr != '\0';
+          const long long sanitized_epoch = has_parse_error ? 0LL : parsed_epoch;
+          if (has_parse_error) {
+            ESP_LOGW("alarm", "Invalid epoch '%s', cancelling alarm", epoch.c_str());
+          }
+          id(alarm_epoch) = sanitized_epoch;
+          id(alarm_enabled) = sanitized_epoch > 0;
           id(alarm_fired) = false;
       - component.update: alarm_armed_state
       - component.update: alarm_time_state
