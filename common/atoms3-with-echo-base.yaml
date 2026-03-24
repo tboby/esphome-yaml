@@ -16,8 +16,6 @@ substitutions:
   # Fonts
   mdi_webfont_file: https://raw.githubusercontent.com/Templarian/MaterialDesign-Webfont/master/fonts/materialdesignicons-webfont.ttf
 
-  # Audio files
-  timer_finished_sound_file: ./timer_finished.wav
   # Background colors
   loading_illustration_background_color: '000000'
   idle_illustration_background_color: '000000'
@@ -198,9 +196,6 @@ media_player:
       format: WAV
       sample_rate: 16000
       num_channels: 1
-    files:
-      - id: timer_finished_sound
-        file: ${timer_finished_sound_file}
 
     on_announcement:
       # Stop the streaming wake word before announcements to free RAM for playback.
@@ -260,31 +255,14 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
     on_turn_off:
-      # Turn off the repeat mode and disable the pause between playlist items
-      - lambda: |-
-              id(echo_base_player)
-                ->make_call()
-                .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_OFF)
-                .set_announcement(true)
-                .perform();
-              id(echo_base_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 0);
-      # Stop playing the alarm
-      - media_player.stop:
-          announcement: true
+      - script.stop: ring_timer_alarm
+      - speaker.stop: i2s_speaker
       - script.execute: start_wake_word
+      - script.execute: set_idle_or_mute_phase
+      - script.execute: draw_display
     on_turn_on:
       - script.execute: stop_wake_word
-      # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
-      - lambda: |-
-            id(echo_base_player)
-              ->make_call()
-              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
-              .set_announcement(true)
-              .perform();
-            id(echo_base_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
-      - media_player.speaker.play_on_device_media_file:
-          media_file: timer_finished_sound
-          announcement: true
+      - script.execute: ring_timer_alarm
       - delay: 15min
       - switch.turn_off: timer_ringing
 
@@ -354,9 +332,8 @@ voice_assistant:
 
   on_timer_finished:
     - switch.turn_on: timer_ringing
-    - wait_until:
-        media_player.is_announcing:
     - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
+    - script.execute: draw_display
 
 globals:
   - id: init_in_progress
@@ -456,6 +433,45 @@ script:
             - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
           else:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+
+  - id: ring_timer_alarm
+    mode: restart
+    then:
+      - while:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            - speaker.play:
+                id: i2s_speaker
+                data: !lambda |-
+                  const uint32_t sample_rate = 16000;
+                  const int16_t amplitude = 7000;
+                  std::vector<uint8_t> data;
+                  data.reserve(8960);
+
+                  auto append_tone = [&](uint32_t frequency, uint32_t duration_ms) {
+                    const uint32_t sample_count = (sample_rate * duration_ms) / 1000;
+                    const uint32_t period = sample_rate / frequency;
+                    for (uint32_t i = 0; i < sample_count; i++) {
+                      const int16_t sample = (i % period) < (period / 2) ? amplitude : -amplitude;
+                      data.push_back(sample & 0xFF);
+                      data.push_back((sample >> 8) & 0xFF);
+                    }
+                  };
+
+                  auto append_silence = [&](uint32_t duration_ms) {
+                    const uint32_t sample_count = (sample_rate * duration_ms) / 1000;
+                    data.insert(data.end(), sample_count * 2, 0);
+                  };
+
+                  append_tone(880, 120);
+                  append_silence(40);
+                  append_tone(1320, 120);
+                  return data;
+            - wait_until:
+                not:
+                  speaker.is_playing: i2s_speaker
+            - delay: 1s
 
   - id: draw_display
     then:
