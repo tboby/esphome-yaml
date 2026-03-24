@@ -31,6 +31,29 @@ As of now the below devices/functionalities are supported:
 
 Some example configurations can be found under `examples` folder, you can clone the repo and use `esphome` locally if you want.
 
+
+## 🛠️ Local Build Environment (mise)
+
+This repo now includes a `.mise.toml` so you can bootstrap a reproducible local ESPHome toolchain quickly.
+
+```bash
+# 1) Install tools and create .venv
+mise install
+
+# 2) Install ESPHome pinned to the repo badge version
+mise run setup
+
+# 3) Verify the CLI is available
+mise run check
+```
+
+After setup, activate the virtualenv if desired:
+
+```bash
+source .venv/bin/activate
+esphome version
+```
+
 ## ❤️ Feature Request & Contributing
 
 Wish for support for more devices? Wanna contribute to the project?
