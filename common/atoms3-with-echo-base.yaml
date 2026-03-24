@@ -17,7 +17,7 @@ substitutions:
   mdi_webfont_file: https://raw.githubusercontent.com/Templarian/MaterialDesign-Webfont/master/fonts/materialdesignicons-webfont.ttf
 
   # Audio files
-  timer_finished_sound_file: timer_finished.wav
+  timer_finished_sound_file: ./timer_finished.wav
   # Background colors
   loading_illustration_background_color: '000000'
   idle_illustration_background_color: '000000'
