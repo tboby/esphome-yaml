@@ -86,6 +86,17 @@ psram:
   speed: 80MHz
 
 api:
+  actions:
+    - action: set_alarm
+      variables:
+        epoch: int64
+      then:
+        - script.execute:
+            id: set_alarm_from_epoch
+            epoch: !lambda return epoch;
+    - action: cancel_alarm
+      then:
+        - script.execute: cancel_alarm
   on_client_connected:
     - script.execute: draw_display
   on_client_disconnected:
@@ -107,6 +118,10 @@ logger:
   level: DEBUG
   
 captive_portal:
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 
 button:
   - platform: factory_reset
@@ -131,6 +146,12 @@ binary_sensor:
               - ON for at least 10s
             then:
               - button.press: factory_reset_btn
+  - platform: template
+    name: Alarm Armed State
+    id: alarm_armed_state
+    icon: "mdi:alarm-check"
+    lambda: return id(alarm_enabled);
+    update_interval: never
 
 
 external_components:
@@ -317,6 +338,55 @@ switch:
           announcement: true
       - delay: 15min
       - switch.turn_off: timer_ringing
+
+  - platform: template
+    name: Alarm Armed
+    id: alarm_armed
+    icon: "mdi:alarm"
+    lambda: return id(alarm_enabled);
+    turn_on_action:
+      - if:
+          condition:
+            lambda: return id(alarm_epoch) > 0;
+          then:
+            - lambda: id(alarm_enabled) = true;
+            - lambda: id(alarm_fired) = false;
+            - component.update: alarm_armed_state
+            - component.update: alarm_time_state
+            - sensor.template.publish:
+                id: alarm_epoch_state
+                state: !lambda return id(alarm_epoch);
+          else:
+            - switch.turn_off: alarm_armed
+    turn_off_action:
+      - script.execute: cancel_alarm
+
+text_sensor:
+  - platform: template
+    name: Alarm Time
+    id: alarm_time_state
+    icon: "mdi:clock-outline"
+    lambda: |-
+      if (id(alarm_epoch) <= 0) {
+        return std::string("Not set");
+      }
+      auto alarm_ts = ESPTime::from_epoch_local(id(alarm_epoch));
+      if (!alarm_ts.is_valid()) {
+        return std::string("Invalid");
+      }
+      return alarm_ts.strftime("%Y-%m-%d %H:%M:%S");
+    update_interval: never
+
+sensor:
+  - platform: template
+    name: Alarm Epoch
+    id: alarm_epoch_state
+    icon: "mdi:timer-outline"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    state_class: measurement
+    lambda: return id(alarm_epoch);
+    update_interval: never
 
 
 select:
@@ -528,6 +598,42 @@ globals:
     type: int
     restore_value: no
     initial_value: ${voice_assist_not_ready_phase_id}
+  - id: alarm_enabled
+    type: bool
+    restore_value: yes
+    initial_value: "false"
+  - id: alarm_epoch
+    type: int64_t
+    restore_value: yes
+    initial_value: "0"
+  - id: alarm_fired
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(alarm_enabled) || id(alarm_epoch) <= 0 || id(alarm_fired) || !id(homeassistant_time).now().is_valid()) {
+                return false;
+              }
+              return id(homeassistant_time).now().timestamp >= id(alarm_epoch);
+          then:
+            - logger.log: "Alarm fired"
+            - lambda: id(alarm_enabled) = false;
+            - lambda: id(alarm_fired) = true;
+            - component.update: alarm_armed_state
+            - component.update: alarm_time_state
+            - sensor.template.publish:
+                id: alarm_epoch_state
+                state: !lambda return id(alarm_epoch);
+            - switch.turn_on: timer_ringing
+            - wait_until:
+                media_player.is_announcing:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id}
 
 
 lp5562:
@@ -654,6 +760,32 @@ script:
             - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
           else:
             - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
+
+  - id: set_alarm_from_epoch
+    parameters:
+      epoch: int64_t
+    then:
+      - lambda: |-
+          id(alarm_epoch) = epoch;
+          id(alarm_enabled) = epoch > 0;
+          id(alarm_fired) = false;
+      - component.update: alarm_armed_state
+      - component.update: alarm_time_state
+      - sensor.template.publish:
+          id: alarm_epoch_state
+          state: !lambda return id(alarm_epoch);
+
+  - id: cancel_alarm
+    then:
+      - lambda: |-
+          id(alarm_enabled) = false;
+          id(alarm_epoch) = 0;
+          id(alarm_fired) = false;
+      - component.update: alarm_armed_state
+      - component.update: alarm_time_state
+      - sensor.template.publish:
+          id: alarm_epoch_state
+          state: 0
 
   - id: play_sound
     parameters:
