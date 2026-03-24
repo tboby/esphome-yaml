@@ -61,6 +61,7 @@ esphome:
   on_boot:
     priority: 600
     then:
+      - logger.log: "Alarm restore: boot sequence started, waiting for valid time before alarm checks"
       - script.execute: draw_display
       - delay: 30s
       - if:
@@ -122,6 +123,11 @@ captive_portal:
 time:
   - platform: homeassistant
     id: homeassistant_time
+    on_time_sync:
+      then:
+        - lambda: id(time_valid_confirmed) = true;
+        - logger.log: "Alarm restore: time synchronized, evaluating restored alarm state"
+        - script.execute: evaluate_restored_alarm
 
 button:
   - platform: factory_reset
@@ -610,6 +616,10 @@ globals:
     type: bool
     restore_value: no
     initial_value: "false"
+  - id: time_valid_confirmed
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
 interval:
   - interval: 1s
@@ -617,23 +627,13 @@ interval:
       - if:
           condition:
             lambda: |-
-              if (!id(alarm_enabled) || id(alarm_epoch) <= 0 || id(alarm_fired) || !id(homeassistant_time).now().is_valid()) {
+              if (!id(time_valid_confirmed) || !id(alarm_enabled) || id(alarm_epoch) <= 0 || id(alarm_fired) || !id(homeassistant_time).now().is_valid()) {
                 return false;
               }
               return id(homeassistant_time).now().timestamp >= id(alarm_epoch);
           then:
-            - logger.log: "Alarm fired"
-            - lambda: id(alarm_enabled) = false;
-            - lambda: id(alarm_fired) = true;
-            - component.update: alarm_armed_state
-            - component.update: alarm_time_state
-            - sensor.template.publish:
-                id: alarm_epoch_state
-                state: !lambda return id(alarm_epoch);
-            - switch.turn_on: timer_ringing
-            - wait_until:
-                media_player.is_announcing:
-            - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id}
+            - logger.log: "Alarm schedule: trigger window reached by polling"
+            - script.execute: fire_alarm_once
 
 
 lp5562:
@@ -711,6 +711,54 @@ display:
           it.printf(0, 0, id(mdi_icon_128), Color::WHITE, "%s", "\U000F036D");
 
 script:
+  - id: evaluate_restored_alarm
+    then:
+      - lambda: |-
+          auto now = id(homeassistant_time).now();
+          if (!now.is_valid()) {
+            ESP_LOGI("alarm", "Alarm restore: time still invalid, skipping evaluation");
+            return;
+          }
+          if (!id(alarm_enabled) || id(alarm_epoch) <= 0) {
+            ESP_LOGI("alarm", "Alarm restore: no armed alarm to restore");
+            return;
+          }
+
+          const int64_t now_epoch = now.timestamp;
+          if (id(alarm_epoch) > now_epoch) {
+            ESP_LOGI("alarm", "Alarm restore: restored alarm scheduled for future epoch=%lld (in %llds)",
+                     (long long) id(alarm_epoch),
+                     (long long) (id(alarm_epoch) - now_epoch));
+            return;
+          }
+
+          ESP_LOGW("alarm", "Alarm restore: restored alarm epoch=%lld is in the past (missed while offline), firing immediately",
+                   (long long) id(alarm_epoch));
+          id(fire_alarm_once).execute();
+
+  - id: fire_alarm_once
+    then:
+      - if:
+          condition:
+            lambda: return id(alarm_enabled) && id(alarm_epoch) > 0 && !id(alarm_fired);
+          then:
+            - logger.log: "Alarm fired: one-off trigger path"
+            - lambda: |-
+                id(alarm_enabled) = false;
+                id(alarm_fired) = true;
+                id(alarm_epoch) = 0;
+            - component.update: alarm_armed_state
+            - component.update: alarm_time_state
+            - sensor.template.publish:
+                id: alarm_epoch_state
+                state: 0
+            - switch.turn_on: timer_ringing
+            - wait_until:
+                media_player.is_announcing:
+            - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id}
+          else:
+            - logger.log: "Alarm fired: ignored because alarm is not armed or already handled"
+
   # Starts either mWW or the streaming wake word, depending on the configured location
   - id: start_wake_word
     then:
@@ -772,6 +820,10 @@ script:
           const long long sanitized_epoch = has_parse_error ? 0LL : parsed_epoch;
           if (has_parse_error) {
             ESP_LOGW("alarm", "Invalid epoch '%s', cancelling alarm", epoch.c_str());
+          } else if (sanitized_epoch > 0) {
+            ESP_LOGI("alarm", "Alarm schedule: armed for epoch=%lld", sanitized_epoch);
+          } else {
+            ESP_LOGI("alarm", "Alarm schedule: cleared via set_alarm action");
           }
           id(alarm_epoch) = sanitized_epoch;
           id(alarm_enabled) = sanitized_epoch > 0;
@@ -784,6 +836,7 @@ script:
 
   - id: cancel_alarm
     then:
+      - logger.log: "Alarm cancel: disarming and clearing alarm state"
       - lambda: |-
           id(alarm_enabled) = false;
           id(alarm_epoch) = 0;
