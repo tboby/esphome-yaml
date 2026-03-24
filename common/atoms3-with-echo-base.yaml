@@ -17,7 +17,7 @@ substitutions:
   mdi_webfont_file: https://raw.githubusercontent.com/Templarian/MaterialDesign-Webfont/master/fonts/materialdesignicons-webfont.ttf
 
   # Audio files
-  timer_finished_sound_file: https://github.com/esphome/home-assistant-voice-pe/raw/dev/sounds/timer_finished.flac
+  timer_finished_sound_file: timer_finished.wav
   # Background colors
   loading_illustration_background_color: '000000'
   idle_illustration_background_color: '000000'
@@ -93,9 +93,12 @@ wifi:
   on_disconnect:
     - script.execute: draw_display
 
+network:
+  enable_high_performance: false
+
 # Enable logging
 logger:
-  level: DEBUG
+  level: WARN
 
 captive_portal:
 
@@ -158,7 +161,7 @@ audio_dac:
     id: es8311_dac
     i2c_id: ext_bus
     bits_per_sample: 16bit
-    sample_rate: 48000
+    sample_rate: 16000
     use_microphone: false  # analog microphone here
     use_mclk: false        # no mclk pin is connected
 
@@ -176,33 +179,30 @@ speaker:
     id: i2s_speaker
     i2s_dout_pin: GPIO5
     dac_type: external
-    sample_rate: 48000
+    sample_rate: 16000
     audio_dac: es8311_dac
     channel: left
+    buffer_duration: 60ms
 
 
 media_player:
   - platform: speaker
     name: "Echo Base Player"
     id: echo_base_player
-    codec_support_enabled: true
+    codec_support_enabled: false
+    buffer_size: 32768
     volume_min: 0.5
     volume_max: 0.8
     announcement_pipeline:
       speaker: i2s_speaker
-      format: FLAC
-      sample_rate: 48000
+      format: WAV
+      sample_rate: 16000
       num_channels: 1
     files:
       - id: timer_finished_sound
         file: ${timer_finished_sound_file}
-    on_state:
-      - logger.log: "State updated!"
-    on_play:
-      - logger.log: "Playback started!"
 
     on_announcement:
-      - logger.log: "Announcing!"
       # Stop the streaming wake word before announcements to free RAM for playback.
       - script.execute: stop_wake_word
       - wait_until:
