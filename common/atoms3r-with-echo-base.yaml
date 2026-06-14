@@ -66,7 +66,7 @@ esphome:
           then:
             - lambda: id(init_in_progress) = false;
             - script.execute: draw_display
-            
+
 esp32:
   variant: esp32s3
   flash_size: 8MB
@@ -102,7 +102,7 @@ wifi:
 # Enable logging
 logger:
   level: DEBUG
-  
+
 captive_portal:
 
 button:
@@ -154,7 +154,7 @@ pi4ioe5v6408:
   - id: pi4ioe5v6408_hub
     i2c_id: ext_bus
     address: 0x43
-      
+
 # I2S Bus Configuration
 i2s_audio:
   - id: i2s_audio_bus
@@ -276,11 +276,11 @@ switch:
     on_turn_off:
       - microphone.unmute:
       - lambda: id(voice_assistant_phase) = ${voice_assist_idle_phase_id};
-      
+
     on_turn_on:
       - microphone.mute:
       - lambda: id(voice_assistant_phase) = ${voice_assist_muted_phase_id};
-      
+
   - platform: template
     id: timer_ringing
     optimistic: true
@@ -415,25 +415,25 @@ micro_wake_word:
         then:
           - switch.turn_off: timer_ringing
           - logger.log: "Alarm stopped locally by 'stop' wakeword"
-    - else:
-        # Normal flow: play sound, then start voice assistant
-        - script.execute:
-            id: play_sound
-            priority: true
-            sound_file: !lambda return id(wake_word_triggered_sound);
-        - wait_until:
-            condition:
-              - media_player.is_announcing:
-            timeout: 0.5s
-        # Announcement is finished and the I2S bus is free
-        - wait_until:
-            - and:
-                - not:
-                    media_player.is_announcing:
-                - not:
-                    speaker.is_playing:
-        - voice_assistant.start:
-            wake_word: !lambda return wake_word;
+        else:
+          # Normal flow: play sound, then start voice assistant
+          - script.execute:
+              id: play_sound
+              priority: true
+              sound_file: !lambda return id(wake_word_triggered_sound);
+          - wait_until:
+              condition:
+                - media_player.is_announcing:
+              timeout: 0.5s
+          # Announcement is finished and the I2S bus is free
+          - wait_until:
+              - and:
+                  - not:
+                      media_player.is_announcing:
+                  - not:
+                      speaker.is_playing:
+          - voice_assistant.start:
+              wake_word: !lambda return wake_word;
 
 
 voice_assistant:
@@ -476,7 +476,7 @@ voice_assistant:
           - micro_wake_word.start:
     - script.execute: set_idle_or_mute_phase
     - script.execute: draw_display
-    
+
   on_error:
     # Only set the error phase if the error code is different than duplicate_wake_up_detected or stt-no-text-recognized
     # These two are ignored for a better user experience
@@ -507,24 +507,24 @@ voice_assistant:
               priority: true
               sound_file: !lambda return id(error_cloud_expired);
           - script.execute: draw_display
-          
+
   on_client_connected:
     - lambda: id(init_in_progress) = false;
     - script.execute: start_wake_word
     - script.execute: set_idle_or_mute_phase
     - script.execute: draw_display
-    
+
   on_client_disconnected:
     - script.execute: stop_wake_word
     - lambda: id(voice_assistant_phase) = ${voice_assist_not_ready_phase_id};
     - script.execute: draw_display
-  
+
   on_timer_finished:
     - switch.turn_on: timer_ringing
     - wait_until:
         media_player.is_announcing:
     - lambda: id(voice_assistant_phase) = ${voice_assist_timer_finished_phase_id};
-    
+
 globals:
   - id: init_in_progress
     type: bool
