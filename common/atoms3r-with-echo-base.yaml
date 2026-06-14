@@ -581,7 +581,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_idle), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: listening_page
@@ -590,7 +590,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_listening), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: thinking_page
@@ -599,7 +599,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_thinking), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: replying_page
@@ -608,7 +608,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_replying), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: error_page
@@ -617,7 +617,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_error), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: no_ha_page
@@ -625,7 +625,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(error_no_ha), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: no_wifi_page
@@ -633,7 +633,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(error_no_wifi), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: initializing_page
@@ -642,7 +642,7 @@ display:
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_initializing), ImageAlign::CENTER);
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: muted_page
@@ -651,7 +651,7 @@ display:
           it.printf(0, 0, id(mdi_icon_128), Color::WHITE, "%s", "\U000F036D");
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
-            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+            it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
                       "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
 
