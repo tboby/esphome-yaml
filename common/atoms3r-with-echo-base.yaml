@@ -396,6 +396,7 @@ select:
 micro_wake_word:
   id: mww
   microphone: i2s_mic
+  stop_after_detection: false
   models:
     - model: okay_nabu
       id: okay_nabu
