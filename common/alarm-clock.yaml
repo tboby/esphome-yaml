@@ -49,6 +49,10 @@ switch:
 # 1. Playing one loop of alarm sound
 # 2. Pausing and listening for "stop" wake word
 # 3. Repeating until "stop" is detected or 15min timeout
+#
+# Uses event-driven wake word management (matches normal flow):
+# - on_announcement handler automatically stops wake word
+# - on_idle handler automatically starts wake word
 # ==========================================
 script:
   - id: alarm_loop
@@ -64,6 +68,7 @@ script:
                 then:
                   - script.stop: alarm_loop
             # Play alarm once
+            # This triggers on_announcement → automatically stops wake word
             - media_player.speaker.play_on_device_media_file:
                 media_file: timer_finished_sound
                 announcement: true
@@ -73,31 +78,22 @@ script:
                   media_player.is_announcing:
                 timeout: 3s
             # Wait for announcement to FINISH
+            # This triggers on_idle → automatically starts wake word
             - wait_until:
                 condition:
                   not:
                     media_player.is_announcing:
                 timeout: 15s
-            # Wait for speaker to fully stop and I2S bus to release
+            # Wait for speaker to fully stop
             - wait_until:
                 condition:
                   not:
                     speaker.is_playing:
                 timeout: 3s
-            - delay: 1s  # Extra time for I2S bus to fully release
-            # Check if still active before listening phase
-            - if:
-                condition:
-                  switch.is_on: timer_ringing
-                then:
-                  # Start listening for "stop" wake word
-                  - script.execute: start_wake_word
-                  # Listen for 5 seconds (enough time for reliable wake word detection)
-                  - delay: 5s
-                  # Only stop wake word if alarm is still active
-                  # (if user dismissed during listen window, on_turn_off already restarted it)
-                  - if:
-                      condition:
-                        switch.is_on: timer_ringing
-                      then:
-                        - script.execute: stop_wake_word
+            # Wait for I2S bus to fully release
+            - delay: 500ms
+            # Wake word detection is now running (started by on_idle handler)
+            # Wait 5 seconds for user to say "stop"
+            - delay: 5s
+            # Next iteration will play announcement again
+            # This triggers on_announcement → automatically stops wake word
