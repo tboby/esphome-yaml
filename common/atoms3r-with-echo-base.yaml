@@ -582,7 +582,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: listening_page
         lambda: |-
@@ -591,7 +591,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: thinking_page
         lambda: |-
@@ -600,7 +600,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: replying_page
         lambda: |-
@@ -609,7 +609,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: error_page
         lambda: |-
@@ -618,7 +618,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: no_ha_page
         lambda: |-
@@ -626,7 +626,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: no_wifi_page
         lambda: |-
@@ -634,7 +634,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: initializing_page
         lambda: |-
@@ -643,7 +643,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
       - id: muted_page
         lambda: |-
@@ -652,7 +652,7 @@ display:
           // Alarm overlay
           if (id(alarm_enabled).state && id(alarm_time).has_state()) {
             it.printf(5, 5, id(alarm_font), id(alarm_red), TextAlign::TOP_LEFT,
-                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+                      "AL %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
           }
 
 script:
