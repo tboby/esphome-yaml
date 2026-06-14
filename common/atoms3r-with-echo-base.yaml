@@ -410,7 +410,9 @@ micro_wake_word:
     # Log wake word detection for debugging
     - logger.log:
         format: "Wake word detected: %s, timer_ringing: %s"
-        args: ['wake_word.c_str()', id(timer_ringing).state ? "ON" : "OFF"']
+        args:
+          - 'wake_word.c_str()'
+          - 'id(timer_ringing).state ? "ON" : "OFF"'
     # Local intercept: catch "stop" when alarm is ringing
     - if:
         condition:
