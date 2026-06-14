@@ -78,8 +78,13 @@ script:
                   not:
                     media_player.is_announcing:
                 timeout: 15s
-            # Wait for I2S bus to fully release
-            - delay: 500ms
+            # Wait for speaker to fully stop and I2S bus to release
+            - wait_until:
+                condition:
+                  not:
+                    speaker.is_playing:
+                timeout: 3s
+            - delay: 1s  # Extra time for I2S bus to fully release
             # Check if still active before listening phase
             - if:
                 condition:
