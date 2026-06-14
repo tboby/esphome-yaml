@@ -417,7 +417,7 @@ micro_wake_word:
     - if:
         condition:
           and:
-            - lambda: 'return wake_word == "stop";'
+            - lambda: 'return wake_word == "stop" || wake_word == "Stop";'
             - switch.is_on: timer_ringing
         then:
           - switch.turn_off: timer_ringing
