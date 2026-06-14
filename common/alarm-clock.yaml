@@ -24,7 +24,8 @@ time:
                              (now.minute == id(alarm_time).minute);
               then:
                 - switch.turn_on: timer_ringing
-                - switch.turn_off: alarm_enabled
+                # Don't turn off alarm_enabled - user must manually disable
+                # This allows the alarm to fire daily at the same time
 
 datetime:
   - platform: template
@@ -51,39 +52,45 @@ switch:
 # ==========================================
 script:
   - id: alarm_loop
+    mode: single
     then:
-      - if:
-          condition:
-            switch.is_on: timer_ringing
+      - repeat:
+          count: 200  # Max iterations (~15 min worth)
           then:
+            # Exit if alarm was dismissed
+            - if:
+                condition:
+                  switch.is_off: timer_ringing
+                then:
+                  - script.stop: alarm_loop
             # Play alarm once
             - media_player.speaker.play_on_device_media_file:
                 media_file: timer_finished_sound
                 announcement: true
-            # Wait for playback to finish (with 10s safety timeout)
+            # Wait for announcement to START
+            - wait_until:
+                condition:
+                  media_player.is_announcing:
+                timeout: 3s
+            # Wait for announcement to FINISH
             - wait_until:
                 condition:
                   not:
                     media_player.is_announcing:
-                timeout: 10s
-            # Check if still active (user might have pressed button)
+                timeout: 15s
+            # Check if still active before listening phase
             - if:
                 condition:
                   switch.is_on: timer_ringing
                 then:
-                  # Stop media player explicitly
-                  - media_player.stop:
-                      announcement: true
                   # Start listening for "stop" wake word
                   - script.execute: start_wake_word
                   # Listen for 2 seconds
                   - delay: 2s
-                  # Check again before stopping wake word
+                  # Only stop wake word if alarm is still active
+                  # (if user dismissed during listen window, on_turn_off already restarted it)
                   - if:
                       condition:
                         switch.is_on: timer_ringing
                       then:
-                        # Stop listening
                         - script.execute: stop_wake_word
-                        # Loop again
-                        - script.execute: alarm_loop
