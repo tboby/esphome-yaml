@@ -78,6 +78,8 @@ script:
                   not:
                     media_player.is_announcing:
                 timeout: 15s
+            # Wait for I2S bus to fully release
+            - delay: 500ms
             # Check if still active before listening phase
             - if:
                 condition:
@@ -85,8 +87,8 @@ script:
                 then:
                   # Start listening for "stop" wake word
                   - script.execute: start_wake_word
-                  # Listen for 3 seconds (enough time for wake word detection)
-                  - delay: 3s
+                  # Listen for 5 seconds (enough time for reliable wake word detection)
+                  - delay: 5s
                   # Only stop wake word if alarm is still active
                   # (if user dismissed during listen window, on_turn_off already restarted it)
                   - if:
