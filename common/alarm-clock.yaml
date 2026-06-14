@@ -85,8 +85,8 @@ script:
                 then:
                   # Start listening for "stop" wake word
                   - script.execute: start_wake_word
-                  # Listen for 2 seconds
-                  - delay: 2s
+                  # Listen for 3 seconds (enough time for wake word detection)
+                  - delay: 3s
                   # Only stop wake word if alarm is still active
                   # (if user dismissed during listen window, on_turn_off already restarted it)
                   - if:
