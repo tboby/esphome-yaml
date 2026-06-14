@@ -1,0 +1,43 @@
+# ==========================================
+# OFFLINE ALARM CLOCK PACKAGE
+# Reference this from your device config via packages:
+#   alarm_clock: github://.../common/alarm-clock.yaml@commit
+# Requires: atoms3r-with-echo-base.yaml (provides timer_ringing, mww, display)
+# ==========================================
+
+time:
+  - platform: homeassistant
+    id: current_time
+    on_time:
+      - seconds: 0
+        minutes: '*'
+        then:
+          - if:
+              condition:
+                and:
+                  - switch.is_on: alarm_enabled
+                  - switch.is_off: timer_ringing
+                  - lambda: |-
+                      auto now = id(current_time).now();
+                      if (!now.is_valid() || !id(alarm_time).has_state()) return false;
+                      return (now.hour == id(alarm_time).hour) && 
+                             (now.minute == id(alarm_time).minute);
+              then:
+                - switch.turn_on: timer_ringing
+                - switch.turn_off: alarm_enabled
+
+datetime:
+  - platform: template
+    name: "Alarm Time"
+    id: alarm_time
+    type: time
+    optimistic: yes
+    restore_value: yes
+
+switch:
+  - platform: template
+    name: "Alarm Active"
+    id: alarm_enabled
+    icon: "mdi:alarm-check"
+    optimistic: yes
+    restore_mode: RESTORE_DEFAULT_OFF

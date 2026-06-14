@@ -406,25 +406,34 @@ micro_wake_word:
       internal: true
   vad:
   on_wake_word_detected:
-    - script.execute:
-        id: play_sound
-        priority: true
-        sound_file: !lambda return id(wake_word_triggered_sound);
-
-    - wait_until:
+    # Local intercept: catch "stop" when alarm is ringing
+    - if:
         condition:
-          - media_player.is_announcing:
-        timeout: 0.5s
-    # Announcement is finished and the I2S bus is free
-    - wait_until:
-        - and:
-            - not:
-                media_player.is_announcing:
-            - not:
-                speaker.is_playing:
-
-    - voice_assistant.start:
-        wake_word: !lambda return wake_word;
+          and:
+            - lambda: 'return wake_word == "stop";'
+            - switch.is_on: timer_ringing
+        then:
+          - switch.turn_off: timer_ringing
+          - logger.log: "Alarm stopped locally by 'stop' wakeword"
+    - else:
+        # Normal flow: play sound, then start voice assistant
+        - script.execute:
+            id: play_sound
+            priority: true
+            sound_file: !lambda return id(wake_word_triggered_sound);
+        - wait_until:
+            condition:
+              - media_player.is_announcing:
+            timeout: 0.5s
+        # Announcement is finished and the I2S bus is free
+        - wait_until:
+            - and:
+                - not:
+                    media_player.is_announcing:
+                - not:
+                    speaker.is_playing:
+        - voice_assistant.start:
+            wake_word: !lambda return wake_word;
 
 
 voice_assistant:
@@ -570,36 +579,81 @@ display:
         lambda: |-
           it.fill(id(idle_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_idle), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: listening_page
         lambda: |-
           it.fill(id(listening_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_listening), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: thinking_page
         lambda: |-
           it.fill(id(thinking_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_thinking), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: replying_page
         lambda: |-
           it.fill(id(replying_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_replying), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: error_page
         lambda: |-
           it.fill(id(error_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_error), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: no_ha_page
         lambda: |-
           it.image((it.get_width() / 2), (it.get_height() / 2), id(error_no_ha), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: no_wifi_page
         lambda: |-
           it.image((it.get_width() / 2), (it.get_height() / 2), id(error_no_wifi), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: initializing_page
         lambda: |-
           it.fill(id(loading_color));
           it.image((it.get_width() / 2), (it.get_height() / 2), id(casita_initializing), ImageAlign::CENTER);
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
       - id: muted_page
         lambda: |-
           it.fill(Color::BLACK);
           it.printf(0, 0, id(mdi_icon_128), Color::WHITE, "%s", "\U000F036D");
+          // Alarm overlay
+          if (id(alarm_enabled).state && id(alarm_time).has_state()) {
+            it.printf(5, 5, id(alarm_font), Color::RED, TextAlign::TOP_LEFT,
+                      "⏰ %02d:%02d", id(alarm_time).hour, id(alarm_time).minute);
+          }
 
 script:
   # Starts either mWW or the streaming wake word, depending on the configured location
@@ -774,6 +828,9 @@ font:
     bpp: 4
     glyphs:
       - "\U000F036D" # mdi:mic-mute
+  - file: "gfonts://Roboto"
+    id: alarm_font
+    size: 20
 
 color:
   - id: idle_color
