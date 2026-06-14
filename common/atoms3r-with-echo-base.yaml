@@ -300,7 +300,7 @@ switch:
           announcement: true
       - script.execute: start_wake_word
     on_turn_on:
-      - script.execute: stop_wake_word
+      # Board supports full-duplex — keep mWW running so "stop" wakeword can dismiss the alarm
       # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
       - lambda: |-
             id(echo_base_player)
