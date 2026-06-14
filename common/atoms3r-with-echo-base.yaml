@@ -302,19 +302,15 @@ switch:
     on_turn_on:
       # Stop mWW to free I2S bus — mic and speaker can't run simultaneously on this hardware
       - script.execute: stop_wake_word
-      # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
-      - lambda: |-
-            id(echo_base_player)
-              ->make_call()
-              .set_command(media_player::MediaPlayerCommand::MEDIA_PLAYER_COMMAND_REPEAT_ONE)
-              .set_announcement(true)
-              .perform();
-            id(echo_base_player)->set_playlist_delay_ms(speaker::AudioPipelineType::ANNOUNCEMENT, 1000);
-      - media_player.speaker.play_on_device_media_file:
-          media_file: timer_finished_sound
-          announcement: true
+      # Start the play-pause-listen alarm loop (defined in alarm-clock.yaml package)
+      - script.execute: alarm_loop
+      # Safety timeout: force alarm off after 15 minutes even if not dismissed
       - delay: 15min
-      - switch.turn_off: timer_ringing
+      - if:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            - switch.turn_off: timer_ringing
 
 
 select:
