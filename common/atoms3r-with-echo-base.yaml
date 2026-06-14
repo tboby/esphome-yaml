@@ -220,12 +220,10 @@ media_player:
 
     on_announcement:
       - logger.log: "Announcing!"
-      # Stop the wake word (mWW or VA) if the mic is capturing, UNLESS alarm is ringing
+      # Stop the wake word (mWW or VA) if the mic is capturing
       - if:
           condition:
-            and:
-              - microphone.is_capturing:
-              - switch.is_off: timer_ringing
+            - microphone.is_capturing:
           then:
             - script.execute: stop_wake_word
             # Ensure VA stops before moving on
@@ -302,7 +300,8 @@ switch:
           announcement: true
       - script.execute: start_wake_word
     on_turn_on:
-      # Board supports full-duplex — keep mWW running so "stop" wakeword can dismiss the alarm
+      # Stop mWW to free I2S bus — mic and speaker can't run simultaneously on this hardware
+      - script.execute: stop_wake_word
       # Turn on the repeat mode and pause for 1000 ms between playlist items/repeats
       - lambda: |-
             id(echo_base_player)
