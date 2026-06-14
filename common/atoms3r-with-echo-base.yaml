@@ -299,9 +299,12 @@ switch:
       - media_player.stop:
           announcement: true
       - script.execute: start_wake_word
+      - micro_wake_word.disable_model: stop
     on_turn_on:
       # Stop mWW to free I2S bus — mic and speaker can't run simultaneously on this hardware
       - script.execute: stop_wake_word
+      # Enable "stop" model so it can dismiss the alarm
+      - micro_wake_word.enable_model: stop
       # Start the play-pause-listen alarm loop (defined in alarm-clock.yaml package)
       - script.execute: alarm_loop
       # Safety timeout: force alarm off after 15 minutes even if not dismissed
@@ -404,6 +407,10 @@ micro_wake_word:
       internal: true
   vad:
   on_wake_word_detected:
+    # Log wake word detection for debugging
+    - logger.log:
+        format: "Wake word detected: %s, timer_ringing: %s"
+        args: ['wake_word.c_str()', id(timer_ringing).state ? "ON" : "OFF"']
     # Local intercept: catch "stop" when alarm is ringing
     - if:
         condition:
