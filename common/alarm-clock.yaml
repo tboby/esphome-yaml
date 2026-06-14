@@ -41,3 +41,49 @@ switch:
     icon: "mdi:alarm-check"
     optimistic: yes
     restore_mode: RESTORE_DEFAULT_OFF
+
+# ==========================================
+# ALARM LOOP SCRIPT: Play-Pause-Listen Pattern
+# This works around the I2S bus limitation by:
+# 1. Playing one loop of alarm sound
+# 2. Pausing and listening for "stop" wake word
+# 3. Repeating until "stop" is detected or 15min timeout
+# ==========================================
+script:
+  - id: alarm_loop
+    then:
+      - if:
+          condition:
+            switch.is_on: timer_ringing
+          then:
+            # Play alarm once
+            - media_player.speaker.play_on_device_media_file:
+                media_file: timer_finished_sound
+                announcement: true
+            # Wait for playback to finish (with 10s safety timeout)
+            - wait_until:
+                condition:
+                  not:
+                    media_player.is_announcing:
+                timeout: 10s
+            # Check if still active (user might have pressed button)
+            - if:
+                condition:
+                  switch.is_on: timer_ringing
+                then:
+                  # Stop media player explicitly
+                  - media_player.stop:
+                      announcement: true
+                  # Start listening for "stop" wake word
+                  - script.execute: start_wake_word
+                  # Listen for 2 seconds
+                  - delay: 2s
+                  # Check again before stopping wake word
+                  - if:
+                      condition:
+                        switch.is_on: timer_ringing
+                      then:
+                        # Stop listening
+                        - script.execute: stop_wake_word
+                        # Loop again
+                        - script.execute: alarm_loop
