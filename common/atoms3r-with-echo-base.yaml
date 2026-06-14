@@ -845,3 +845,5 @@ color:
     hex: ${loading_illustration_background_color}
   - id: error_color
     hex: ${error_illustration_background_color}
+  - id: alarm_red
+    hex: FF0000
